@@ -18,6 +18,7 @@ export class FailureWindow extends Component {
       gameManager.score = 0;
       gameManager.scoreLabel.string = 'Score: 0';
 
+      gameManager.backgroundMusic.play();
 
       gameManager.obstacles.children.forEach((node) => node.destroy());
     }

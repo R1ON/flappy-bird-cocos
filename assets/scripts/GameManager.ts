@@ -1,7 +1,7 @@
 import {
   _decorator, Component, Node, input, Input, RigidBody2D,
   Vec2, Vec3, Prefab, instantiate, Collider2D, Contact2DType,
-  Label, tween, Size, view, UITransform,
+  Label, tween, Size, view, UITransform, AudioClip, AudioSource,
 } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -38,6 +38,15 @@ export class GameManager extends Component {
     @property(Prefab)
     sensor: Prefab;
 
+    @property(AudioClip)
+    jumpSound: AudioClip;
+    @property(AudioSource)
+    backgroundMusic: AudioSource;
+    @property(AudioClip)
+    failureMusic: AudioClip;
+
+    audioSource: AudioSource;
+
     size: Size;
     playerSize: Size;
 
@@ -56,6 +65,8 @@ export class GameManager extends Component {
 
       playerCollider.on(Contact2DType.BEGIN_CONTACT, this.onBeginContact, this);
       playerCollider.on(Contact2DType.END_CONTACT, this.onEndContact, this);
+
+      this.audioSource = this.getComponent(AudioSource);
     }
 
     update() {
@@ -103,7 +114,8 @@ export class GameManager extends Component {
       this.unscheduleAllCallbacks();
       this.failureWindow.active = true;
       this.player.getComponent(Collider2D).enabled = false;
-
+      this.backgroundMusic.stop();
+      this.audioSource.playOneShot(this.failureMusic, 0.5);
 
       this.obstacles.children.forEach((node) => {
         node.getComponent(RigidBody2D).linearVelocity = new Vec2(0, 0);
@@ -111,8 +123,12 @@ export class GameManager extends Component {
     }
 
     private jump() {
+      if (this.gameState === GameState.Over) return;
+
       this.playerBody.linearVelocity = new Vec2(0, 0);
       this.playerBody.applyLinearImpulseToCenter(new Vec2(0, 700), true);
+
+      this.audioSource.playOneShot(this.jumpSound, 0.6);
 
       if (this.gameState === GameState.Ready) {
         this.gameState = GameState.Playing;
