@@ -1761,6 +1761,9 @@
     },
     "_enabled": true,
     "__prefab": null,
+    "cameraNode": {
+      "__id__": 3
+    },
     "player": {
       "__id__": 13
     },

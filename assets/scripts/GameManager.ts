@@ -20,6 +20,10 @@ export const enum GameState {
 @ccclass('GameManager')
 export class GameManager extends Component {
     @property(Node)
+    cameraNode: Node;
+    cameraStartPosition: Vec3;
+
+    @property(Node)
     player: Node;
     playerBody: RigidBody2D;
 
@@ -54,6 +58,8 @@ export class GameManager extends Component {
     score = 0;
 
     start() {
+      this.cameraStartPosition = this.cameraNode.position.clone();
+
       this.size = view.getVisibleSize();
       this.playerBody = this.player.getComponent(RigidBody2D);
       input.on(Input.EventType.TOUCH_START, this.jump, this);
@@ -110,6 +116,8 @@ export class GameManager extends Component {
     private gameOver() {
       if (this.gameState === GameState.Over) return;
 
+      this.shakeCameraAfterGameOver();
+
       this.gameState = GameState.Over;
       this.unscheduleAllCallbacks();
       this.failureWindow.active = true;
@@ -120,6 +128,22 @@ export class GameManager extends Component {
       this.obstacles.children.forEach((node) => {
         node.getComponent(RigidBody2D).linearVelocity = new Vec2(0, 0);
       });
+    }
+
+    private shakeCameraAfterGameOver() {
+      const { x, y, z } = this.cameraStartPosition;
+
+      const offsets = [[12, -8], [-10, 10], [8, -12], [-6, 6], [4, -4], [-2, 2]];
+
+      const shake = tween(this.cameraNode);
+
+      offsets.forEach(([dx, dy]) => {
+        shake.to(0.04, { position: new Vec3(x + dx, y + dy, z) });
+      })
+
+      shake.to(0.04, { position: this.cameraStartPosition });
+
+      shake.start();
     }
 
     private jump() {
