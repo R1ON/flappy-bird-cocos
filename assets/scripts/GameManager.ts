@@ -1,7 +1,7 @@
 import {
   _decorator, Component, Node, input, Input, RigidBody2D,
   Vec2, Vec3, Prefab, instantiate, Collider2D, Contact2DType,
-  Label, tween,
+  Label, tween, Size, view, UITransform,
 } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -9,6 +9,12 @@ const enum ColliderTag {
   Obstacles = 1,
   Sensor = 2,
   Player = 3,
+}
+
+export const enum GameState {
+  Ready = 1,
+  Playing = 2,
+  Over = 3,
 }
 
 @ccclass('GameManager')
@@ -32,16 +38,44 @@ export class GameManager extends Component {
     @property(Prefab)
     sensor: Prefab;
 
-    isGameStarted = false;
+    size: Size;
+    playerSize: Size;
+
+    gameState = GameState.Ready;
     score = 0;
 
     start() {
+      this.size = view.getVisibleSize();
       this.playerBody = this.player.getComponent(RigidBody2D);
       input.on(Input.EventType.TOUCH_START, this.jump, this);
 
+      this.playerSize = this.player.getComponent(UITransform).contentSize;
+
       const playerCollider = this.player.getComponent(Collider2D);
+      playerCollider.enabled = true;
+
       playerCollider.on(Contact2DType.BEGIN_CONTACT, this.onBeginContact, this);
       playerCollider.on(Contact2DType.END_CONTACT, this.onEndContact, this);
+    }
+
+    update() {
+      const playerYPosition = this.player.position.y;
+      const topScreenPosition = (this.size.height / 2);
+      const bottomScreenPosition = -(this.size.height / 2);
+      const bottomPositionPlusPlayerSize = bottomScreenPosition - (this.playerSize.height / 2);
+
+      if (this.gameState === GameState.Over) {
+
+        if (this.player.active && playerYPosition < bottomPositionPlusPlayerSize) {
+          this.player.active = false;
+        }
+
+        return;
+      }
+
+      if (playerYPosition > topScreenPosition || playerYPosition < bottomPositionPlusPlayerSize) {
+        this.gameOver();
+      }
     }
 
     onDestroy() {
@@ -50,12 +84,7 @@ export class GameManager extends Component {
 
     private onBeginContact(_selfCollider: Collider2D, otherCollider: Collider2D) {
       if (otherCollider.tag !== ColliderTag.Sensor) {
-        this.failureWindow.active = true;
-        this.unscheduleAllCallbacks();
-
-        this.obstacles.children.forEach((node) => {
-          node.getComponent(RigidBody2D).linearVelocity = new Vec2(0, 0);
-        });
+        this.gameOver();
       }
     }
 
@@ -67,12 +96,26 @@ export class GameManager extends Component {
       }
     }
 
+    private gameOver() {
+      if (this.gameState === GameState.Over) return;
+
+      this.gameState = GameState.Over;
+      this.unscheduleAllCallbacks();
+      this.failureWindow.active = true;
+      this.player.getComponent(Collider2D).enabled = false;
+
+
+      this.obstacles.children.forEach((node) => {
+        node.getComponent(RigidBody2D).linearVelocity = new Vec2(0, 0);
+      });
+    }
+
     private jump() {
       this.playerBody.linearVelocity = new Vec2(0, 0);
       this.playerBody.applyLinearImpulseToCenter(new Vec2(0, 700), true);
 
-      if (!this.isGameStarted) {
-        this.isGameStarted = true;
+      if (this.gameState === GameState.Ready) {
+        this.gameState = GameState.Playing;
         this.schedule(this.generateObstacles, 0.8);
       }
     }
