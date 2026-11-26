@@ -2,7 +2,7 @@ import {
   _decorator, Component, Node, input, Input, RigidBody2D,
   Vec2, Vec3, Prefab, instantiate, Collider2D, Contact2DType,
   Label, tween, Size, view, UITransform, AudioClip, AudioSource,
-  sys,
+  sys, director,
 } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -61,6 +61,7 @@ export class GameManager extends Component {
     playerSize: Size;
 
     gameState = GameState.Ready;
+    isPaused = false;
     score = 0;
 
     start() {
@@ -168,7 +169,7 @@ export class GameManager extends Component {
     }
 
     private jump() {
-      if (this.gameState === GameState.Over) return;
+      if (this.gameState === GameState.Over || this.isPaused) return;
 
       this.playerBody.linearVelocity = new Vec2(0, 0);
       this.playerBody.applyLinearImpulseToCenter(new Vec2(0, 700), true);
@@ -178,6 +179,20 @@ export class GameManager extends Component {
       if (this.gameState === GameState.Ready) {
         this.gameState = GameState.Playing;
         this.schedule(this.generateObstacles, 0.8);
+      }
+    }
+
+    private pauseGame() {
+      if (this.gameState === GameState.Over) return;
+
+      this.isPaused = !this.isPaused;
+
+      if (this.isPaused) {
+        this.backgroundMusic.pause();
+        director.pause();
+      } else {
+        this.backgroundMusic.play();
+        director.resume();
       }
     }
 

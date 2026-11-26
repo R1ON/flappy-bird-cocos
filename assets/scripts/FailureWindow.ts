@@ -37,6 +37,7 @@ export class FailureWindow extends Component {
       const gameManager = director.getScene().getChildByName('GameManager').getComponent(GameManager);
 
       gameManager.gameState = GameState.Ready;
+      gameManager.isPaused = false;
       gameManager.failureWindow.active = false;
 
       gameManager.player.active = true;
@@ -51,9 +52,12 @@ export class FailureWindow extends Component {
       gameManager.createUserName();
 
       gameManager.obstacles.children.forEach((node) => node.destroy());
+
+      director.resume()
     }
 
     private goToMainMenu() {
+      director.resume();
       director.loadScene('MainMenu');
     }
 
