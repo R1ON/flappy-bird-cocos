@@ -2,6 +2,7 @@ import {
   _decorator, Component, Node, input, Input, RigidBody2D,
   Vec2, Vec3, Prefab, instantiate, Collider2D, Contact2DType,
   Label, tween, Size, view, UITransform, AudioClip, AudioSource,
+  sys,
 } from 'cc';
 const { ccclass, property } = _decorator;
 
@@ -16,6 +17,8 @@ export const enum GameState {
   Playing = 2,
   Over = 3,
 }
+
+const USER_NAME_STORAGE_KEY = 'LastUserName';
 
 @ccclass('GameManager')
 export class GameManager extends Component {
@@ -32,6 +35,9 @@ export class GameManager extends Component {
 
     @property(Label)
     scoreLabel: Label;
+    @property(Label)
+    userNameLabel: Label;
+    userName: string;
 
     @property(Node)
     obstacles: Node;
@@ -69,6 +75,8 @@ export class GameManager extends Component {
       const playerCollider = this.player.getComponent(Collider2D);
       playerCollider.enabled = true;
 
+      this.createUserName();
+
       playerCollider.on(Contact2DType.BEGIN_CONTACT, this.onBeginContact, this);
       playerCollider.on(Contact2DType.END_CONTACT, this.onEndContact, this);
 
@@ -99,6 +107,14 @@ export class GameManager extends Component {
       input.off(Input.EventType.TOUCH_START, this.jump, this);
     }
 
+    createUserName() {
+      const userName = String(parseInt(sys.localStorage.getItem(USER_NAME_STORAGE_KEY) || '0') + 1);
+      sys.localStorage.setItem(USER_NAME_STORAGE_KEY, userName);
+
+      this.userName = userName;
+      this.userNameLabel.string = `User #${userName}`;
+    }
+
     private onBeginContact(_selfCollider: Collider2D, otherCollider: Collider2D) {
       if (otherCollider.tag !== ColliderTag.Sensor) {
         this.gameOver();
@@ -106,6 +122,8 @@ export class GameManager extends Component {
     }
 
     private onEndContact(_selfCollider: Collider2D, otherCollider: Collider2D) {
+      if (this.gameState === GameState.Over) return;
+
       if (otherCollider.tag === ColliderTag.Sensor) {
         this.score += 1;
         this.bumpScoreLabel();
@@ -121,9 +139,12 @@ export class GameManager extends Component {
       this.gameState = GameState.Over;
       this.unscheduleAllCallbacks();
       this.failureWindow.active = true;
-      this.player.getComponent(Collider2D).enabled = false;
       this.backgroundMusic.stop();
       this.audioSource.playOneShot(this.failureMusic, 0.5);
+
+      this.scheduleOnce(() => {
+        this.player.getComponent(Collider2D).enabled = false;
+      }, 0);
 
       this.obstacles.children.forEach((node) => {
         node.getComponent(RigidBody2D).linearVelocity = new Vec2(0, 0);
